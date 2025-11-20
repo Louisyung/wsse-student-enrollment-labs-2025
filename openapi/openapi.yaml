@@ -2,16 +2,70 @@ openapi: "3.0.0"
 info:
   title: "Hello API"
   version: "0.1.0"
+
 servers:
   - url: "https://api.example.edu/api/v1"
     description: "Production"
 
+# ------------------------------------------------------------
+# 擴充 1：Tags 與 externalDocs
+# ------------------------------------------------------------
+tags:
+  - name: students
+    description: Operations related to student resources
+
+externalDocs:
+  description: More information
+  url: https://example.com/docs
+
+# ------------------------------------------------------------
+# 全域安全性（擴充 6）
+# ------------------------------------------------------------
+security:
+  - ApiKeyAuth: []
+
+components:
+  # ------------------------------------------------------------
+  # 擴充 2：Student 資料模型
+  # 擴充 4：Error 統一錯誤格式
+  # 擴充 6：API Key Security Scheme
+  # ------------------------------------------------------------
+  schemas:
+    Student:
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Tom"
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Something went wrong"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
 paths:
+
+  # ------------------------------------------------------------
+  # Health（覆寫 security）→ 不需要 API Key
+  # ------------------------------------------------------------
   /health:
     get:
       summary: "Health check"
       description: "服務是否正常"
-      security: []
+      security: []   # 覆寫：這個 API 不需要驗證
       responses:
         "200":
           description: "OK"
@@ -20,4 +74,62 @@ paths:
               schema:
                 type: object
                 properties:
-                  status: { type: string, example: "ok"}
+                  status:
+                    type: string
+                    example: "ok"
+
+  # ------------------------------------------------------------
+  # 擴充 3：GET /students
+  # ------------------------------------------------------------
+  /students:
+    get:
+      tags:
+        - students
+      summary: "List all students"
+      responses:
+        "200":
+          description: "A list of students"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+
+        "400":
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    # ------------------------------------------------------------
+    # 擴充 5：POST /students（201 + Location header）
+    # ------------------------------------------------------------
+    post:
+      tags:
+        - students
+      summary: "Create a new student"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Student"
+
+      responses:
+        "201":
+          description: "Student created"
+          headers:
+            Location:
+              description: "URL of the created student resource"
+              schema:
+                type: string
+                example: "/students/123"
+
+        "400":
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
